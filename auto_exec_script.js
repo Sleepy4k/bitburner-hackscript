@@ -1,15 +1,33 @@
+import { getRootedDomains } from "/helpers";
+
 /**
  * Main thread to exec hack script
  * @param {NS} ns provide main native hack function
  * @return void
  */
 export async function main(ns) {
-  const servers = ns.getPurchasedServers();
-	const scriptTemplateName = "nuke-template.js";
+  /**
+   * In this script, i want to make automation for exec script template on all purchased server
+   * With logic:
+   * 1. Get all purchased server
+   * 2. Get current server max ram
+   * 3. Get total thread that script template need
+   * 4. Get all domains that have root access
+   * 5. Calculate each domain thread,
+   *    for example 4 domains and 32 script thread so we have 8 thread each domain
+   * 6. Execute script template with 2 thread, so from 8 thread divided by 2, we got 4 script running
+   */
 
   ns.tail(ns.pid);
 
+  // Get all purchased server
+  const servers = ns.getPurchasedServers();
+
+  // Script template name, please provided file script name file
+	const scriptTemplateName = "nuke-template.js";
+
   for (let i = 0; i < servers.length; i++) {
+    // Get server name with index same as iterator
     const server  = servers[i];
 
     // Get server max ram, with logic, server max ram - current free ram = max server ram
@@ -21,12 +39,39 @@ export async function main(ns) {
     // Get script max thread to run
     const scriptThread = Math.floor(serverMaxRAM / totalScriptRAM);
 
-    const eachDomainThread = scriptThread / 2;
+    // Get domains that already have root access
+    const rootedDomains = await getRootedDomains(ns);
+
+    // Get each domain thread
+    let eachDomainThread = Math.round(scriptThread / rootedDomains.length);
+
+    // Make an iterator for our loop
+    let iterator = 0;
 
     for (let t = 0; t < scriptThread; t++) {
-      const domain = (t < eachDomainThread) ? "n00dles" : "foodnstuff";
+      // Here some explain, when index (t) is less or equal than each domain thread
+      if (t <= eachDomainThread) {
+        // And if index (t) is even then we get current domain and execute script template
+        if (t % 2 == 0) {
+          const domain = rootedDomains[iterator];
 
-      ns.exec(scriptTemplateName, server, 1, 1, false, domain);
+          ns.exec(scriptTemplateName, server, 2, 2, false, domain);
+        }
+
+        // Please that a note, that in last condition we check index (t) value
+        // If index (t) we increase one is more that each domain thread then we increase iterator value
+        // And each domain value is multipled by 2
+        if ((t + 1) > eachDomainThread) {
+          iterator++;
+          eachDomainThread *= 2;
+        }
+      }
     }
   }
+
+  // Adding some sleep, just for adding some time to see tail log
+  await ns.sleep(5000);
+
+  // Yea yea yea, i know, just cleaning up tail
+  ns.closeTail(ns.pid);
 }
