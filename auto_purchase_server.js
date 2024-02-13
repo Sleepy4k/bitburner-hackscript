@@ -1,4 +1,4 @@
-import { serverDomain, getRootedDomains } from "/helpers";
+import { serverDomain, getRootedDomains } from "./helpers";
 
 /**
  * Main thread to exec hack script
@@ -21,13 +21,10 @@ export async function main(ns) {
 	// Define base ram when we purchase server
 	const baseRAM = 8.00;
 
-	// Please don't change this, or script will throw an error (rare case)
-	// Because this game only support 25 total server
-	const maxServerPurchased = 25;
-
-	// Define max ram that we can upgrade, if you want to make it more
+	// Define max ram that we can upgrade, By default,
+	// We just get home server max ram, if you want to make it more
 	// Feel free to change this value, remember ram format, 2, 4, 8, 16, ...
-	const totalMaxUpgradeRAM = 64;
+	const totalMaxUpgradeRAM = ns.getServerMaxRam("home");
 
 	// Passing argument from console or script to enable tail mode
 	const enableTail = ns.args[0] || false;
@@ -48,9 +45,9 @@ export async function main(ns) {
 		 * Check server that can we buy, if we can buy atleast 1 server than we buy it and run template hack script
 		 * If not, we check if we can upgrade server component
 		 */
-		if (totalServerCanBuy > 0 && purchasedServers.length < maxServerPurchased) {
+		if (totalServerCanBuy > 0) {
 			// Check home domain money, if domain money equal to server cost then we make a purchase
-			if (ns.getServerMoneyAvailable("home") >= ns.getPurchasedServerCost(baseRAM)) {
+			if (ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(baseRAM)) {
 				const serverIndex = purchasedServers.length + 1;
 
 				// Purchasing server and make unique domain with lastest server number
@@ -93,29 +90,31 @@ export async function main(ns) {
 				const rootedDomains = await getRootedDomains(ns);
 
 				// Get each domain thread
-				let eachDomainThread = Math.round(scriptThread / rootedDomains.length);
+				let eachDomainThread = Math.ceil(scriptThread / rootedDomains.length);
 
 				// Make an iterator for our loop
 				let iterator = 0;
 
+				// Init checker array with length same as rooted domains length and 0 for default value
+				let checker = new Array(rootedDomains.length).fill(0);
+
 				for (let t = 0; t < scriptThread; t++) {
-					// Here some explain, when index (t) is less or equal than each domain thread
-					if (t <= eachDomainThread) {
+					// Here some explain, If checker with index (iterator) less or equal than each domain thread
+					// Then make a proccess to execute, else increase iterator value by one
+					if (checker[iterator] <= eachDomainThread) {
 						// And if index (t) is even then we get current domain and execute script template
 						if (t % 2 == 0) {
 							const domain = rootedDomains[iterator];
 
 							ns.exec(scriptTemplateName, server, 2, 2, false, domain);
 						}
-
-						// Please that a note, that in last condition we check index (t) value
-						// If index (t) we increase one is more that each domain thread then we increase iterator value
-						// And each domain value is multipled by 2
-						if ((t + 1) > eachDomainThread) {
-							iterator++;
-							eachDomainThread *= 2;
-						}
+					} else {
+						// Just increase iterator value
+						iterator++;
 					}
+
+					// After we done our stuff above, make sure we increase checker with index (iterator) by one
+					checker[iterator]++;
 				}
 			}
 		} else if (purchasedServers.length > 1) {
@@ -127,7 +126,7 @@ export async function main(ns) {
 				let currentServerRam = ns.getServerMaxRam(server);
 
 				// Basically it's same as above, just we change some logic such as, purchase server and kill all running script
-				if (ns.getServerMoneyAvailable("home") >= ns.getPurchasedServerUpgradeCost(server, currentServerRam * 2) && currentServerRam < totalMaxUpgradeRAM) {
+				if (ns.getServerMoneyAvailable("home") > ns.getPurchasedServerUpgradeCost(server, currentServerRam * 2) && currentServerRam < totalMaxUpgradeRAM) {
 					// Upgrade current server ram
 					ns.upgradePurchasedServer(server, currentServerRam * 2);
 
@@ -177,29 +176,31 @@ export async function main(ns) {
 					const rootedDomains = await getRootedDomains(ns);
 
 					// Get each domain thread
-					let eachDomainThread = Math.round(scriptThread / rootedDomains.length);
+					let eachDomainThread = Math.ceil(scriptThread / rootedDomains.length);
 
 					// Make an iterator for our loop
 					let iterator = 0;
 
+					// Init checker array with length same as rooted domains length and 0 for default value
+					let checker = new Array(rootedDomains.length).fill(0);
+
 					for (let t = 0; t < scriptThread; t++) {
-						// Here some explain, when index (t) is less or equal than each domain thread
-						if (t <= eachDomainThread) {
+						// Here some explain, If checker with index (iterator) less or equal than each domain thread
+						// Then make a proccess to execute, else increase iterator value by one
+						if (checker[iterator] <= eachDomainThread) {
 							// And if index (t) is even then we get current domain and execute script template
 							if (t % 2 == 0) {
 								const domain = rootedDomains[iterator];
 
 								ns.exec(scriptTemplateName, server, 2, 2, false, domain);
 							}
-
-							// Please that a note, that in last condition we check index (t) value
-							// If index (t) we increase one is more that each domain thread then we increase iterator value
-							// And each domain value is multipled by 2
-							if ((t + 1) > eachDomainThread) {
-								iterator++;
-								eachDomainThread *= 2;
-							}
+						} else {
+							// Just increase iterator value
+							iterator++;
 						}
+
+						// After we done our stuff above, make sure we increase checker with index (iterator) by one
+						checker[iterator]++;
 					}
 				}	
 			}
