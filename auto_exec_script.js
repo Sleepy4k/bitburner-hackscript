@@ -26,6 +26,9 @@ export async function main(ns) {
   // Script template name, please provided file script name file
 	const scriptTemplateName = "nuke-template.js";
 
+  // Get domains that already have root access
+  const rootedDomains = await getRootedDomains(ns);
+
   for (let i = 0; i < servers.length; i++) {
     // Get server name with index same as iterator
     const server  = servers[i];
@@ -39,33 +42,32 @@ export async function main(ns) {
     // Get script max thread to run
     const scriptThread = Math.floor(serverMaxRAM / totalScriptRAM);
 
-    // Get domains that already have root access
-    const rootedDomains = await getRootedDomains(ns);
-
     // Get each domain thread
-    let eachDomainThread = Math.round(scriptThread / rootedDomains.length);
+    let eachDomainThread = Math.ceil(scriptThread / rootedDomains.length);
 
     // Make an iterator for our loop
     let iterator = 0;
 
+    // Init checker array with length same as rooted domains length and 0 for default value
+    let checker = new Array(rootedDomains.length).fill(0);
+
     for (let t = 0; t < scriptThread; t++) {
-      // Here some explain, when index (t) is less or equal than each domain thread
-      if (t <= eachDomainThread) {
+      // Here some explain, If checker with index (iterator) less or equal than each domain thread
+      // Then make a proccess to execute, else increase iterator value by one
+      if (checker[iterator] <= eachDomainThread) {
         // And if index (t) is even then we get current domain and execute script template
         if (t % 2 == 0) {
           const domain = rootedDomains[iterator];
 
           ns.exec(scriptTemplateName, server, 2, 2, false, domain);
         }
-
-        // Please that a note, that in last condition we check index (t) value
-        // If index (t) we increase one is more that each domain thread then we increase iterator value
-        // And each domain value is multipled by 2
-        if ((t + 1) > eachDomainThread) {
-          iterator++;
-          eachDomainThread *= 2;
-        }
+      } else {
+        // Just increase iterator value
+        iterator++;
       }
+
+      // After we done our stuff above, make sure we increase checker with index (iterator) by one
+      checker[iterator]++;
     }
   }
 
