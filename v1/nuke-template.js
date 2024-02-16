@@ -4,6 +4,11 @@
  * @return void
  */
 export async function main(ns) {
+  ns.disableLog("getServerMaxMoney");
+  ns.disableLog("getServerSecurityLevel");
+  ns.disableLog("getServerMoneyAvailable");
+  ns.disableLog("getServerMinSecurityLevel");
+
   /**
    * In this script, basically we just make system weak
    * When we don't reach min server security level
