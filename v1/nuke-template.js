@@ -4,11 +4,6 @@
  * @return void
  */
 export async function main(ns) {
-  ns.disableLog("getServerMaxMoney");
-  ns.disableLog("getServerSecurityLevel");
-  ns.disableLog("getServerMoneyAvailable");
-  ns.disableLog("getServerMinSecurityLevel");
-
   /**
    * In this script, basically we just make system weak
    * When we don't reach min server security level
@@ -20,7 +15,7 @@ export async function main(ns) {
   const threadCount = ns.args[0] || 1;
   const tailOnRun = ns.args[1] || false;
   const hostName = ns.args[2] || "foodnstuff"; // Keep in note, that you can change this default value with n00dles or something
-
+  
   if (tailOnRun) ns.tail(ns.pid);
 
   // Get hostname maximum money, ofcouse with formula, max money * 0.85
