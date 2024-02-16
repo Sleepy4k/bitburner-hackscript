@@ -1,5 +1,5 @@
 import { execScript } from "./auto_exec_script";
-import { stopScript } from "../stop_all_running_script";
+import { stopScript } from "./stop_all_running_script";
 import { getNukedDomains, scriptTemplateName } from "./helpers";
 
 /**
