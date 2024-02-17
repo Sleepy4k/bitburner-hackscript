@@ -145,11 +145,11 @@ export function gainRootAccess(ns, domain) {
   if (serverData.hasAdminRights) return true;
 
   // Check if server minimal hacking skill is less then player hacking skill, otherwise it will return false
-  if (serverData.requiredHackingSkill > ns.getHackingLevel()) return false;
+  if (serverData.requiredHackingSkill >= ns.getHackingLevel()) return false;
 
   // Check if we can do nuke, when required open port number is less then current open port total otherwise return false
-  if (serverData.numOpenPortsRequired > serverData.openPortCount) return false;
-  
+  if (serverData.numOpenPortsRequired >= serverData.openPortCount) return false;
+
   ns.nuke(domain);
 
   return true;
