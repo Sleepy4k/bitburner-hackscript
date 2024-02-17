@@ -32,36 +32,17 @@ export function execScript(ns, server, scriptName, rootedDomains, threadEachScri
   threadEachScript = (threadEachScript > eachDomainThread) ? 1 : threadEachScript;
 
   for (let i = 0; i < scriptThread; i++) {
-    if (checker === 0) continue;
-
     if (i % threadEachScript === 0) {
       const domain = rootedDomains[iterator];
 
       ns.exec(scriptName, server, threadEachScript, threadEachScript, false, domain);
 
-      if (checker - 1 == 0) {
+      if (checker - threadEachScript <= 0) {
         iterator++;
         checker = eachDomainThread;
       } else checker -= threadEachScript
     }
   }
-
-  // Just testing new logic above, if you have better logic, please let me know
-  //
-  // for (let i = 0; i < scriptThread; i++) {
-  //   if (checker > 0) {
-  //     if (i % threadEachScript == 0) {
-  //       const domain = rootedDomains[iterator];
-
-  //       ns.exec(scriptName, server, threadEachScript, threadEachScript, false, domain);
-
-  //       checker -= threadEachScript
-  //     }
-  //   } else {
-  //     iterator++;
-  //     checker = eachDomainThread;
-  //   }
-  // }
 }
 
 /**
@@ -96,10 +77,8 @@ export async function main(ns) {
   // Get domains that already have root access
   const rootedDomains = getNukedDomains(ns);
 
-  servers.forEach(server => {
-    // Execute script with current options
-    execScript(ns, server, scriptTemplateName, rootedDomains);
-  });
+  // Execute script with current options
+  servers.forEach(server => execScript(ns, server, scriptTemplateName, rootedDomains));
 
   // Adding some sleep, just for adding some time to see tail log
   await ns.sleep(5000);
