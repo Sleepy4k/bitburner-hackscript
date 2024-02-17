@@ -37,7 +37,7 @@ export async function main(ns) {
 	const totalMaxUpgradeRAM = ns.getServerMaxRam("home");
 
 	// Passing argument from console or script to enable tail mode
-	const enableTail = ns.args[0] || false;
+	const enableTail = ns.args ? ns.args[0] : false;
 
 	// Check if script will run tail or not
 	if (enableTail) ns.tail(ns.pid);
@@ -55,7 +55,7 @@ export async function main(ns) {
 		 */
 		if (purchasedServers.length < totalServerCanBuy) {
 			// Check home domain money, if domain money equal to server cost then we make a purchase
-			if (ns.getServerMoneyAvailable("home") > ns.getPurchasedServerCost(baseRAM)) {
+			if (ns.getServerMoneyAvailable("home") >= ns.getPurchasedServerCost(baseRAM)) {
 				const serverIndex = purchasedServers.length + 1;
 
 				// Purchasing server and make unique domain with lastest server number
