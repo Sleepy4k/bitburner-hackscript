@@ -99,9 +99,6 @@ export function deepScan(ns, domain = "home") {
 
   digging(domain);
 
-  // Enable log for scan function
-  ns.enableLog("scan");
-
   // Return all domain list array data
   return domainList;
 }
@@ -113,6 +110,16 @@ export function deepScan(ns, domain = "home") {
  * @return boolean
  */
 export function gainRootAccess(ns, domain) {
+  // Disable default ns log
+  ns.disableLog("nuke");
+  ns.disableLog("brutessh");
+  ns.disableLog("ftpcrack");
+  ns.disableLog("httpworm");
+  ns.disableLog("getServer");
+  ns.disableLog("relaysmtp");
+  ns.disableLog("sqlinject");
+  ns.disableLog("getHackingLevel");
+
   // Get current domain server analyze data
   const serverData = ns.getServer(domain);
 
@@ -140,15 +147,12 @@ export function gainRootAccess(ns, domain) {
   // Check if server minimal hacking skill is less then player hacking skill, otherwise it will return false
   if (serverData.requiredHackingSkill > ns.getHackingLevel()) return false;
 
-  // Check if we can do nuke, when required open port number is less then current open port total
-  if (serverData.numOpenPortsRequired < serverData.openPortCount) {
-    ns.nuke(domain);
+  // Check if we can do nuke, when required open port number is less then current open port total otherwise return false
+  if (serverData.numOpenPortsRequired > serverData.openPortCount) return false;
+  
+  ns.nuke(domain);
 
-    return true;
-  }
-
-  // Return false when we can't do anything from server or if server doesn't have root access
-  return false;
+  return true;
 }
 
 /**
