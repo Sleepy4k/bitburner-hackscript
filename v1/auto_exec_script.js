@@ -10,6 +10,11 @@ import { getNukedDomains, scriptTemplateName } from "/helpers";
  * @return void
  */
 export function execScript(ns, server, scriptName, rootedDomains, threadEachScript = 2) {
+  ns.disableLog("exec");
+  ns.disableLog("getScriptRam");
+  ns.disableLog("getServerMaxRam");
+  ns.disableLog("getServerUsedRam");
+
   // Get server max ram, with logic, server max ram - current free ram = max server ram
   const serverMaxRAM = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
 
@@ -29,7 +34,7 @@ export function execScript(ns, server, scriptName, rootedDomains, threadEachScri
   let checker = eachDomainThread;
 
   // Check if thread each script more than each domain thread, or it could make it logic error
-  threadEachScript = (threadEachScript > eachDomainThread) ? 1 : threadEachScript;
+  threadEachScript = (threadEachScript >= eachDomainThread) ? 1 : threadEachScript;
 
   for (let i = 0; i < scriptThread; i++) {
     if (i % threadEachScript === 0) {
@@ -51,10 +56,6 @@ export function execScript(ns, server, scriptName, rootedDomains, threadEachScri
  * @return void
  */
 export async function main(ns) {
-  ns.disableLog("exec");
-  ns.disableLog("getScriptRam");
-  ns.disableLog("getServerMaxRam");
-  ns.disableLog("getServerUsedRam");
   ns.disableLog("getPurchasedServers");
 
 	/**
