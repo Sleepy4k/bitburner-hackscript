@@ -42,9 +42,9 @@ export async function main(ns) {
         const ramUpgradeCost = hn.getRamUpgradeCost(i, 1) * ramWeight;
         const coreUpgradeCost = hn.getCoreUpgradeCost(i, 1) * coreWeight;
 
-        if (levelUpgradeCost != Infinity && levelUpgradeCost < homeServerMoney) hn.upgradeLevel(i, 1);
-        else if (ramUpgradeCost != Infinity && ramUpgradeCost < homeServerMoney) hn.upgradeRam(i, 1);
-        else if (coreUpgradeCost != Infinity && coreUpgradeCost < homeServerMoney) hn.upgradeCore(i, 1);
+        if (levelUpgradeCost != Infinity && levelUpgradeCost <= homeServerMoney) hn.upgradeLevel(i, 1);
+        else if (ramUpgradeCost != Infinity && ramUpgradeCost <= homeServerMoney) hn.upgradeRam(i, 1);
+        else if (coreUpgradeCost != Infinity && coreUpgradeCost <= homeServerMoney) hn.upgradeCore(i, 1);
       }
     } else hn.purchaseNode();
 
