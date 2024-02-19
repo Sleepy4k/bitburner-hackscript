@@ -13,10 +13,10 @@ export async function main(ns) {
    * 4. priority list is, level, ram and then core
    */
 
-	// Passing argument from console or script to enable tail mode
-	const enableTail = ns.args[0] || false;
+  // Passing argument from console or script to enable tail mode
+  const enableTail = ns.args[0] || false;
 
-	if (enableTail) ns.tail(ns.pid);
+  if (enableTail) ns.tail(ns.pid);
 
   // So this is our formula, feel free if you want to change
   const levelWeight = 5;

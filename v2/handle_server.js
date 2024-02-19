@@ -1,4 +1,4 @@
-import { execScript } from "./auto_exec_script";
+import { execScript } from "./execute_script";
 import { serverDomainPrefix, getNukedDomains, scriptTemplateName } from "./helpers";
 
 /**
@@ -44,11 +44,11 @@ export async function main(ns) {
         ns.purchaseServer(serverName, minimumServerRAM);
         ns.print(`buying new server with ram ${minimumServerRAM}GB with name ${serverName}`);
 
-				// Hard copy template file to new server from home domain
-				ns.scp(scriptTemplateName, server, "home");
+        // Hard copy template file to new server from home domain
+        ns.scp(scriptTemplateName, server, "home");
 
-				// Execute script with current options
-				execScript(ns, serverName, scriptTemplateName, rootedDomains);
+        // Execute script with current options
+        execScript(ns, serverName, scriptTemplateName, rootedDomains);
       } else {
         const serverAlreadyUpgraded = totalPurchasedServer - upgradeEachXServer;
 
