@@ -1,8 +1,8 @@
-// Define blacklisted domain, this domain will not listed in all get domains function
-const blacklistedDomain = ["darkweb", "home"];
-
 // Set minimum server money check, if server max money lower or equal than this then we dont hack this
 const serverMinimumMaxMoney = 100;
+
+// Define blacklisted domain, this domain will not listed in all get domains function
+const blacklistedDomain = ["darkweb", "home"];
 
 // How about make server domain like a config?
 export const serverDomainPrefix = "pserv";
@@ -33,7 +33,7 @@ function deepScan(ns, domain = "home") {
     const currentScan = ns.scan(domain);
 
     // Loop each data from current scan list
-    currentScan.forEach(server => {
+    for (const server of currentScan) {
       // If current server already in domain list then skip current loop
       if (domainList.includes(server)) return;
 
@@ -48,7 +48,7 @@ function deepScan(ns, domain = "home") {
 
       // Deep down into current server, check if current server have a child server
       digging(server);
-    });
+    }
   }
 
   // Deep down into current server, check if current server have a child server
@@ -124,7 +124,7 @@ export function getNukedDomains(ns) {
   const domains = deepScan(ns);
 
   // Loop each data from domains list
-  domains.forEach(domain => {
+  for (const domain of domains) {
     // Check if current server have admin rights or not
     const nukeStatus = gainRootAccess(ns, domain);
 
@@ -133,8 +133,33 @@ export function getNukedDomains(ns) {
 
     // Insert into nuked domains list
     nukedDomains.push(domain);
-  });
+  }
 
   // Return all nuked domains data
   return nukedDomains;
+}
+
+/**
+ * Get all purchased server, optimize then native ns function
+ * @param {NS} ns provide main native hack functioon
+ * @return array
+ */
+export function getPurchasedServer(ns) {
+  // Init array data to store purchased server
+  let purchasedServer = [];
+
+  // Make variable to store home scan result
+  const homeScan = ns.scan("home");
+
+  // Loop each data from home scan data list
+  for (const server of homeScan) {
+    // Check if current server if contain server domain prefix, if not then we skip this server
+    if (server.search(serverDomainPrefix) == -1) continue;
+
+    // Insert current server into purchased server data list
+    purchasedServer.push(server);
+  }
+
+  // Return all purchased server list
+  return purchasedServer;
 }
