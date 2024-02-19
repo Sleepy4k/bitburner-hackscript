@@ -1,5 +1,5 @@
-import { execScript } from "./v2/execute_script";
-import { serverDomainPrefix, getPurchasedServer, getNukedDomains, scriptTemplateName } from "./v2/helpers";
+import { execScript } from "./execute_script";
+import { serverDomainPrefix, getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpers";
 
 /**
  * Main thread to exec hack script

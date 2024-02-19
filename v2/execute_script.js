@@ -1,4 +1,4 @@
-import { getPurchasedServer, getNukedDomains, scriptTemplateName } from "./v2/helpers";
+import { getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpers";
 
 /**
  * Execute script name from targeted server, slice thread into all rooted domains
