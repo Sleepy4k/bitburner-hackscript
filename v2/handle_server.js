@@ -1,5 +1,5 @@
-import { execScript } from "./execute_script";
-import { serverDomainPrefix, getNukedDomains, scriptTemplateName } from "./helpers";
+import { execScript } from "./v2/execute_script";
+import { serverDomainPrefix, getPurchasedServer, getNukedDomains, scriptTemplateName } from "./v2/helpers";
 
 /**
  * Main thread to exec hack script
@@ -10,79 +10,89 @@ export async function main(ns) {
   // Disable ns log
   ns.disableLog("ALL");
 
+  ns.tail(ns.pid);
+
   const loopSleep = 5;
-
   const minimumServerRAM = 8;
-
   const upgradeEachXServer = 5;
-
   const ramLimit = ns.getPurchasedServerMaxRam();
+  const totalPurchaseableServer = ns.getPurchasedServerLimit();
 
-  let maxPurchaseableRAM = ns.getServerMaxRam("home");
+  let upgradeFlag = false;
+  let purchasedServer = getPurchasedServer(ns);
+  let currentMaxRAMUpgrade = minimumServerRAM * 2;
+  let maxPurchaseableRAM = Math.min(ns.getServerMaxRam("home"), ramLimit);
 
-  if (maxPurchaseableRAM > ramLimit) maxPurchaseableRAM = ramLimit;
+  if (purchasedServer.length > 0 && ns.getServerMaxRam(purchasedServer[0]) > currentMaxRAMUpgrade) {
+    currentMaxRAMUpgrade = ns.getServerMaxRam(purchasedServer[0]);
+  }
 
   ns.print(`Initial server handler with minimum ram ${minimumServerRAM}GB and max ram ${maxPurchaseableRAM}GB`);
 
-  // Also we need to know how many server we can purchase
-  const totalPurchaseableServer = ns.getPurchasedServerLimit() + upgradeEachXServer;
+  function updatePurchasedServerList() {
+    purchasedServer = purchasedServer.length > 1 ? purchasedServer.sort((a, b) => ns.getServerMaxRam(a) - ns.getServerMaxRam(b)) : purchasedServer;
+  }
 
   while (true) {
-    // Get domains that already have root access
     const rootedDomains = getNukedDomains(ns);
+    let totalPurchasedServer = purchasedServer.length;
 
-    const purchasedServer = ns.getPurchasedServers();
-    let totalPurchasedServer = purchasedServer.length + upgradeEachXServer;
+    updatePurchasedServerList();
 
-    const serverMoneyAvailable = ns.getServerMoneyAvailable("home");
+    while (totalPurchasedServer < totalPurchaseableServer && !upgradeFlag) {
+      const serverCost = ns.getPurchasedServerCost(minimumServerRAM);
 
-    if (totalPurchasedServer < totalPurchaseableServer) {
-      if (totalPurchasedServer % upgradeEachXServer != 0 && serverMoneyAvailable >= ns.getPurchasedServerCost(minimumServerRAM)) {
-        totalPurchaseableServer++;
-        const serverName = serverDomainPrefix + "-" + totalPurchaseableServer;
+      if (ns.getServerMoneyAvailable("home") >= serverCost) {
+        totalPurchasedServer++;
 
-        ns.purchaseServer(serverName, minimumServerRAM);
+        const serverName = ns.purchaseServer(`${serverDomainPrefix}-${totalPurchasedServer}`, minimumServerRAM);
+
+        purchasedServer.push(serverName);
+        updatePurchasedServerList();
+
         ns.print(`buying new server with ram ${minimumServerRAM}GB with name ${serverName}`);
+        ns.scp(scriptTemplateName, serverName, "home");
 
-        // Hard copy template file to new server from home domain
-        ns.scp(scriptTemplateName, server, "home");
-
-        // Execute script with current options
         execScript(ns, serverName, scriptTemplateName, rootedDomains);
-      } else {
-        const serverAlreadyUpgraded = totalPurchasedServer - upgradeEachXServer;
-
-        for (let i = 1; i <= totalPurchasedServer; i++) {
-          if (i < serverAlreadyUpgraded) continue;
-
-          const server = purchasedServer[i];
-          const amoutNewRAM = ns.getServerMaxRam(server) * 2;
-
-          if (serverMoneyAvailable < ns.getPurchasedServerUpgradeCost(server, amoutNewRAM)) return;
-
-          ns.print(`Upgrade server ${server} to new ram ${amoutNewRAM}GB`);
-
-          // Kill all running script
-          ns.killall(server);
-
-          ns.upgradePurchasedServer(server, amoutNewRAM);
-          
-          // Hard copy template file to new server from home domain
-          ns.scp(scriptTemplateName, server, "home");
-
-          // Execute script with current options
-          execScript(ns, server, scriptTemplateName, rootedDomains);
-        }
       }
+
+      upgradeFlag = totalPurchasedServer % upgradeEachXServer === 0;
+      await ns.sleep(loopSleep * 1000);
     }
 
-    if (totalPurchasedServer == totalPurchaseableServer) {
-      const reversedPurchasedServer = purchasedServer.reverse();
-      const lastestServerMaxRAM = ns.getServerMaxRam(reversedPurchasedServer[0]);
+    while (upgradeFlag) {
+      let isServerAlreadyMax = true;
 
-      if (lastestServerMaxRAM >= maxPurchaseableRAM) {
-        ns.print("All server already maxed out, stopping script");
-        break;
+      for (const server of purchasedServer) {
+        if (ns.getServerMaxRam(server) >= currentMaxRAMUpgrade) continue;
+
+        if (ns.getServerMoneyAvailable("home") >= ns.getPurchasedServerUpgradeCost(server, currentMaxRAMUpgrade)) {
+          ns.killall(server);
+
+          ns.upgradePurchasedServer(server, currentMaxRAMUpgrade);
+
+          ns.print(`Upgrade server ${server} to new ram ${currentMaxRAMUpgrade}GB`);
+
+          ns.scp(scriptTemplateName, server, "home");
+
+          execScript(ns, server, scriptTemplateName, rootedDomains);
+
+          isServerAlreadyMax = false;
+          updatePurchasedServerList();
+        }
+      }
+
+      upgradeFlag = !isServerAlreadyMax;
+      await ns.sleep(loopSleep * 1000);
+    }
+
+    if (totalPurchasedServer === totalPurchaseableServer && !upgradeFlag && currentMaxRAMUpgrade === maxPurchaseableRAM) break;
+    else if (currentMaxRAMUpgrade < maxPurchaseableRAM && totalPurchasedServer === totalPurchaseableServer && !upgradeFlag) {
+      upgradeFlag = true;
+      updatePurchasedServerList();
+
+      if (ns.getServerMaxRam(purchasedServer[0]) >= currentMaxRAMUpgrade) {
+        currentMaxRAMUpgrade = currentMaxRAMUpgrade * 2 >= maxPurchaseableRAM ? maxPurchaseableRAM : currentMaxRAMUpgrade * 2;
       }
     }
 
