@@ -35,13 +35,13 @@ function deepScan(ns, domain = "home") {
     // Loop each data from current scan list
     for (const server of currentScan) {
       // If current server already in domain list then skip current loop
-      if (domainList.includes(server)) return;
+      if (domainList.includes(server)) continue;
 
       // If current server have name like in blacklisted domain then skip current loop
-      if (blacklistedDomain.includes(server)) return;
+      if (blacklistedDomain.includes(server)) continue;
 
       // If current server have prefix name as server domain prefix then skip current loop
-      if (server.search(serverDomainPrefix) != -1) return;
+      if (server.search(serverDomainPrefix) != -1) continue;
 
       // Insert into domain list data
       domainList.push(server);
@@ -97,10 +97,10 @@ function gainRootAccess(ns, domain) {
   if (serverData.hasAdminRights && serverData.moneyMax > serverMinimumMaxMoney) return true;
 
   // Check if server minimal hacking skill is less then player hacking skill, otherwise it will return false
-  if (serverData.requiredHackingSkill >= ns.getHackingLevel()) return false;
+  if (serverData.requiredHackingSkill > ns.getHackingLevel()) return false;
 
   // Check if we can do nuke, when required open port number is less then current open port total otherwise return false
-  if (serverData.numOpenPortsRequired >= serverData.openPortCount) return false;
+  if (serverData.numOpenPortsRequired > serverData.openPortCount) return false;
 
   // Gain admin rights
   ns.nuke(domain);
@@ -117,6 +117,9 @@ function gainRootAccess(ns, domain) {
  * @return array
  */
 export function getNukedDomains(ns) {
+  // Disable default ns log
+  ns.disableLog("disableLog");
+
   // Init array data to store domains that already been nuked
   let nukedDomains = [];
 
@@ -129,7 +132,7 @@ export function getNukedDomains(ns) {
     const nukeStatus = gainRootAccess(ns, domain);
 
     // If current server doesn't have admin rights then skip current loop
-    if (!nukeStatus) return;
+    if (!nukeStatus) continue;
 
     // Insert into nuked domains list
     nukedDomains.push(domain);
