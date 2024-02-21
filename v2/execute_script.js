@@ -6,14 +6,19 @@ import { getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpe
  * @param {string} server provided targeted server that will handle running script
  * @param {string} scriptName provided script template name
  * @param {array} rootedDomains list domains that already have root access
- * @param {integer=} threadEachScript set thread each script will have, default is 2, better not change this in args
  * @return void
  */
-export function execScript(ns, server, scriptName, rootedDomains, threadEachScript = 2) {
+export function execScript(ns, server, scriptName, rootedDomains) {
   ns.disableLog("exec");
   ns.disableLog("getScriptRam");
   ns.disableLog("getServerMaxRam");
   ns.disableLog("getServerUsedRam");
+
+  // Check if rooted domain data is empty, if true then skip execute scripts
+  if (rootedDomains.filter(str => str !== '').length < 1) {
+    ns.print("Execute skipped due total rooted domains is less than 1, please nuke 1 of those domaines");
+    return;
+  }
 
   // Get server max ram, with logic, server max ram - current free ram = max server ram
   const serverMaxRAM = ns.getServerMaxRam(server) - ns.getServerUsedRam(server);
@@ -25,26 +30,10 @@ export function execScript(ns, server, scriptName, rootedDomains, threadEachScri
   const scriptThread = Math.floor(serverMaxRAM / totalScriptRAM);
 
   // Get each domain thread
-  const eachDomainThread = Math.ceil(scriptThread / rootedDomains.length);
+  const eachDomainThread = Math.floor(scriptThread / rootedDomains.length);
 
-  // Make an iterator for our loop
-  let iterator = 0;
-
-  // Check if thread each script more than each domain thread, or it could make it logic error
-  threadEachScript = (threadEachScript >= eachDomainThread) ? 1 : threadEachScript;
-
-  for (let i = 0; i < scriptThread; i++) {
-    if (i % eachDomainThread === 0) iterator++;
-
-    if (i % threadEachScript === 0) {
-      const domain = rootedDomains[iterator];
-
-      try {
-        ns.exec(scriptName, server, threadEachScript, threadEachScript, false, domain);
-      } catch {
-        ns.exec(scriptName, server, threadEachScript, threadEachScript, false, "n00dles");
-      }
-    }
+  for (let i = 0; i < rootedDomains.length; i++) {
+    ns.exec(scriptName, server, eachDomainThread, eachDomainThread, false, rootedDomains[i]);
   }
 }
 
@@ -68,7 +57,9 @@ export async function main(ns) {
    * 6. Execute script template with 2 thread, so from 8 thread divided by 2, we got 4 script running
    */
 
-  ns.tail(ns.pid);
+  // Passing argument from console or script to enable tail mode
+  const tailOnRun = ns.args[0] || false;
+  if (tailOnRun) ns.tail(ns.pid);
 
   // Get all purchased server
   const servers = getPurchasedServer(ns);
@@ -77,11 +68,15 @@ export async function main(ns) {
   const rootedDomains = getNukedDomains(ns);
 
   // Execute script with current options
-  servers.forEach(server => execScript(ns, server, scriptTemplateName, rootedDomains));
+  for (const server of servers) {
+    execScript(ns, server, scriptTemplateName, rootedDomains);
+  }
 
-  // Adding some sleep, just for adding some time to see tail log
-  await ns.sleep(5000);
+  if (tailOnRun) {
+    // Adding some sleep, just for adding some time to see tail log
+    await ns.sleep(5000);
 
-  // Yea yea yea, i know, just cleaning up tail
-  ns.closeTail(ns.pid);
+    // Yea yea yea, i know, just cleaning up tail
+    ns.closeTail(ns.pid);
+  }
 }
