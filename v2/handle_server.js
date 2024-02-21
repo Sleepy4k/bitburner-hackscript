@@ -10,7 +10,9 @@ export async function main(ns) {
   // Disable ns log
   ns.disableLog("ALL");
 
-  ns.tail(ns.pid);
+  // Passing argument from console or script to enable tail mode
+  const enableTail = ns.args[0] || false;
+  if (enableTail) ns.tail(ns.pid);
 
   const loopSleep = 5;
   const minimumServerRAM = 8;
@@ -19,18 +21,17 @@ export async function main(ns) {
   const totalPurchaseableServer = ns.getPurchasedServerLimit();
 
   let upgradeFlag = false;
+  let lowestServerRAM = minimumServerRAM;
   let purchasedServer = getPurchasedServer(ns);
   let currentMaxRAMUpgrade = minimumServerRAM * 2;
   let maxPurchaseableRAM = Math.min(ns.getServerMaxRam("home"), ramLimit);
-
-  if (purchasedServer.length > 0 && ns.getServerMaxRam(purchasedServer[0]) > currentMaxRAMUpgrade) {
-    currentMaxRAMUpgrade = ns.getServerMaxRam(purchasedServer[0]);
-  }
 
   ns.print(`Initial server handler with minimum ram ${minimumServerRAM}GB and max ram ${maxPurchaseableRAM}GB`);
 
   function updatePurchasedServerList() {
     purchasedServer = purchasedServer.length > 1 ? purchasedServer.sort((a, b) => ns.getServerMaxRam(a) - ns.getServerMaxRam(b)) : purchasedServer;
+    lowestServerRAM = ns.getServerMaxRam(purchasedServer[0]);
+    currentMaxRAMUpgrade = ns.getServerMaxRam(purchasedServer[purchasedServer.length - 1]);
   }
 
   while (true) {
@@ -46,14 +47,13 @@ export async function main(ns) {
         totalPurchasedServer++;
 
         const serverName = ns.purchaseServer(`${serverDomainPrefix}-${totalPurchasedServer}`, minimumServerRAM);
-
         purchasedServer.push(serverName);
-        updatePurchasedServerList();
 
         ns.print(`buying new server with ram ${minimumServerRAM}GB with name ${serverName}`);
         ns.scp(scriptTemplateName, serverName, "home");
 
         execScript(ns, serverName, scriptTemplateName, rootedDomains);
+        updatePurchasedServerList();
       }
 
       upgradeFlag = totalPurchasedServer % upgradeEachXServer === 0;
@@ -86,7 +86,8 @@ export async function main(ns) {
       await ns.sleep(loopSleep * 1000);
     }
 
-    if (totalPurchasedServer === totalPurchaseableServer && !upgradeFlag && currentMaxRAMUpgrade === maxPurchaseableRAM) break;
+    if (totalPurchasedServer === totalPurchaseableServer && !upgradeFlag && currentMaxRAMUpgrade === maxPurchaseableRAM && lowestServerRAM === currentMaxRAMUpgrade) break;
+    else if (lowestServerRAM < currentMaxRAMUpgrade && !upgradeFlag) upgradeFlag = true;
     else if (currentMaxRAMUpgrade < maxPurchaseableRAM && totalPurchasedServer === totalPurchaseableServer && !upgradeFlag) {
       upgradeFlag = true;
       updatePurchasedServerList();
@@ -97,5 +98,13 @@ export async function main(ns) {
     }
 
     await ns.sleep(loopSleep * 1000);
+  }
+
+  if (enableTail) {
+    // Adding some sleep, just for adding some time to see tail log
+    await ns.sleep(5000);
+
+    // Yea yea yea, i know, just cleaning up tail
+    ns.closeTail(ns.pid);
   }
 }
