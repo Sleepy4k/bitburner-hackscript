@@ -3,9 +3,9 @@ import { getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpe
 /**
  * Execute script name from targeted server, slice thread into all rooted domains
  * @param {NS} ns provide main native hack function
- * @param {string} server provided targeted server that will handle running script
- * @param {string} scriptName provided script template name
- * @param {array} rootedDomains list domains that already have root access
+ * @param {String} server provided targeted server that will handle running script
+ * @param {String} scriptName provided script template name
+ * @param {Array} rootedDomains list domains that already have root access
  * @return void
  */
 export function execScript(ns, server, scriptName, rootedDomains) {
@@ -29,10 +29,13 @@ export function execScript(ns, server, scriptName, rootedDomains) {
   // Get script max thread to run
   const scriptThread = Math.floor(serverMaxRAM / totalScriptRAM);
 
-  // Get each domain thread
-  const eachDomainThread = Math.floor(scriptThread / rootedDomains.length);
+  // Get rooted domains length, prevent script error de each domain thread equal to 0 or less
+  const domainsLength = scriptThread < rootedDomains.length ? scriptThread : rootedDomains.length;
 
-  for (let i = 0; i < rootedDomains.length; i++) {
+  // Get each domain thread
+  const eachDomainThread = Math.floor(scriptThread / domainsLength);
+
+  for (let i = 0; i < domainsLength; i++) {
     ns.exec(scriptName, server, eachDomainThread, eachDomainThread, false, rootedDomains[i]);
   }
 }
