@@ -12,7 +12,12 @@ const UPGRADE_EACH_X_SERVER = 5;
  * @return {Array} updated list of purchased servers
  */
 function updatePurchasedServerList(ns, purchasedServer) {
-  return purchasedServer.length > 1 ? purchasedServer.sort((a, b) => ns.getServerMaxRam(a) - ns.getServerMaxRam(b)) : purchasedServer;
+  purchasedServer = purchasedServer.length > 1 ? purchasedServer.sort((a, b) => ns.getServerMaxRam(a) - ns.getServerMaxRam(b)) : purchasedServer;
+
+  const lowestServerRAM = purchasedServer.length > 0 ? ns.getServerMaxRam(purchasedServer[0]) : null;
+  const currentMaxRAMUpgrade = purchasedServer.length > 1 ? ns.getServerMaxRam(purchasedServer[purchasedServer.length - 1]) : null;
+
+  return [purchasedServer, lowestServerRAM, currentMaxRAMUpgrade];
 }
 
 /**
@@ -24,22 +29,21 @@ function updatePurchasedServerList(ns, purchasedServer) {
  * @return {Array} updated list of purchased servers
  */
 function purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains) {
+  let updatePurchaseList = false;
+  let purchasedServerName = null;
   const serverCost = ns.getPurchasedServerCost(MINIMUM_SERVER_RAM);
 
   if (ns.getServerMoneyAvailable("home") >= serverCost) {
-    totalPurchasedServer++;
+    purchasedServerName = ns.purchaseServer(`${serverDomainPrefix}-${totalPurchasedServer + 1}`, MINIMUM_SERVER_RAM);
 
-    const serverName = ns.purchaseServer(`${serverDomainPrefix}-${totalPurchasedServer}`, MINIMUM_SERVER_RAM);
-    purchasedServer.push(serverName);
+    ns.print(`buying new server with ram ${MINIMUM_SERVER_RAM}GB with name ${purchasedServerName}`);
+    ns.scp(scriptTemplateName, purchasedServerName, "home");
 
-    ns.print(`buying new server with ram ${MINIMUM_SERVER_RAM}GB with name ${serverName}`);
-    ns.scp(scriptTemplateName, serverName, "home");
-
-    execScript(ns, serverName, scriptTemplateName, rootedDomains);
-    purchasedServer = updatePurchasedServerList(ns, purchasedServer);
+    execScript(ns, purchasedServerName, scriptTemplateName, rootedDomains);
+    updatePurchaseList = true;
   }
 
-  return purchasedServer;
+  return [purchasedServerName, updatePurchaseList];
 }
 
 /**
@@ -52,6 +56,7 @@ function purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains
  */
 function upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains) {
   let isServerAlreadyMax = true;
+  let updatePurchaseList = false;
 
   for (const server of purchasedServer) {
     if (ns.getServerMaxRam(server) >= currentMaxRAMUpgrade) continue;
@@ -68,11 +73,11 @@ function upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains)
       execScript(ns, server, scriptTemplateName, rootedDomains);
 
       isServerAlreadyMax = false;
-      purchasedServer = updatePurchasedServerList(ns, purchasedServer);
+      updatePurchaseList = true;
     }
   }
 
-  return !isServerAlreadyMax;
+  return [!isServerAlreadyMax, updatePurchaseList];
 }
 
 /**
@@ -84,11 +89,11 @@ function upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains)
  */
 function upgradeCurrentMaxServerRAM(ns, currentMaxRAMUpgrade, maxPurchaseableRAM) {
   if (currentMaxRAMUpgrade * 2 > maxPurchaseableRAM) {
-    ns.print(`All server reach max server ram upgrade that can be purchased, preparing to shutdown current script after ${loopSleep * 1000} seconds`);
+    ns.print(`All server reach max server ram upgrade that can be purchased, preparing to shutdown current script after ${LOOP_SLEEP * 1000} seconds`);
     return maxPurchaseableRAM;
   }
 
-  ns.print(`All server already upgraded to current max ram upgrade ${currentMaxRAMUpgrade}GB, doubling current server max ram upgrade to ${currentMaxRAMUpgrade * 2}`);
+  ns.print(`All server already upgraded to current max ram upgrade ${currentMaxRAMUpgrade}GB, doubling current server max ram upgrade to ${currentMaxRAMUpgrade * 2}GB`);
   return currentMaxRAMUpgrade * 2;
 }
 
@@ -130,21 +135,38 @@ export async function main(ns) {
 
   ns.print(`Initial server handler with minimum ram ${MINIMUM_SERVER_RAM}GB and max ram ${maxPurchaseableRAM}GB`);
 
+  function updateScriptState() {
+    const updateState = updatePurchasedServerList(ns, purchasedServer);
+
+    purchasedServer = updateState[0];
+    lowestServerRAM = updateState[1] != null ? updateState[1] : lowestServerRAM;
+    currentMaxRAMUpgrade = (updateState[2] != null && updateState[2] > currentMaxRAMUpgrade) ? updateState[2] : currentMaxRAMUpgrade;
+  }
+
   while (true) {
     const rootedDomains = getNukedDomains(ns);
     let totalPurchasedServer = purchasedServer.length;
 
-    purchasedServer = updatePurchasedServerList(ns, purchasedServer);
+    updateScriptState();
 
     while (totalPurchasedServer < totalPurchaseableServer && !upgradeFlag) {
-      purchasedServer = purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains);
+      const purchasedServerResult = purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains);
+      if (purchasedServerResult[0] != null) purchasedServer.push(purchasedServerResult[0]);
+      if (purchasedServerResult[1]) updateScriptState();
+
       totalPurchasedServer = purchasedServer.length;
       upgradeFlag = totalPurchasedServer % UPGRADE_EACH_X_SERVER === 0;
+
       await ns.sleep(LOOP_SLEEP * 1000);
     }
 
     while (upgradeFlag) {
-      upgradeFlag = upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains);
+      const upgradeServerResult = upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains);
+
+      upgradeFlag = upgradeServerResult[0];
+      
+      if (upgradeServerResult[1]) updateScriptState();
+
       await ns.sleep(LOOP_SLEEP * 1000);
     }
 
@@ -152,7 +174,7 @@ export async function main(ns) {
     else if (lowestServerRAM < currentMaxRAMUpgrade && !upgradeFlag) upgradeFlag = true;
     else if (currentMaxRAMUpgrade < maxPurchaseableRAM && totalPurchasedServer === totalPurchaseableServer && !upgradeFlag) {
       upgradeFlag = true;
-      purchasedServer = updatePurchasedServerList(ns, purchasedServer);  
+      updateScriptState();
 
       if (ns.getServerMaxRam(purchasedServer[0]) >= currentMaxRAMUpgrade) {
         currentMaxRAMUpgrade = upgradeCurrentMaxServerRAM(ns, currentMaxRAMUpgrade, maxPurchaseableRAM);
