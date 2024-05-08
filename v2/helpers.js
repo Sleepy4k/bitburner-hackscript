@@ -78,20 +78,23 @@ function gainRootAccess(ns, domain) {
   // Get current domain server analyze data
   const serverData = ns.getServer(domain);
 
+  // Init ns file exist into variable
+  const checkFileIfExists = ns.fileExists;
+
   // Check if we can do brute ssh on current server, if we already make it then skip it
-  if (ns.fileExists("BruteSSH.exe", "home") && !serverData.sshPortOpen) ns.brutessh(domain);
+  if (checkFileIfExists("BruteSSH.exe", "home") && !serverData.sshPortOpen) ns.brutessh(domain);
 
   // Check if we can do crack ftp on current server, if we already make it then skip it
-  if (ns.fileExists("FTPCrack.exe", "home") && !serverData.ftpPortOpen) ns.ftpcrack(domain);
+  if (checkFileIfExists("FTPCrack.exe", "home") && !serverData.ftpPortOpen) ns.ftpcrack(domain);
 
   // Check if we can do relay smtp on current server, if we already make it then skip it
-  if (ns.fileExists("relaySMTP.exe", "home") && !serverData.smtpPortOpen) ns.relaysmtp(domain);
+  if (checkFileIfExists("relaySMTP.exe", "home") && !serverData.smtpPortOpen) ns.relaysmtp(domain);
 
   // Check if we can do http worm on current server, if we already make it then skip it
-  if (ns.fileExists("HTTPWorm.exe", "home") && !serverData.httpPortOpen) ns.httpworm(domain);
+  if (checkFileIfExists("HTTPWorm.exe", "home") && !serverData.httpPortOpen) ns.httpworm(domain);
   
   // Check if we can do sql inject on current server, if we already make it then skip it
-  if (ns.fileExists("SQLInject.exe", "home") && !serverData.sqlPortOpen) ns.sqlinject(domain);
+  if (checkFileIfExists("SQLInject.exe", "home") && !serverData.sqlPortOpen) ns.sqlinject(domain);
 
   // Check if current server already have root access, if yes then return true
   if (serverData.hasAdminRights && serverData.moneyMax > serverMinimumMaxMoney) return true;

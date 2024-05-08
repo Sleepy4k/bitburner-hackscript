@@ -2,7 +2,8 @@ import { getPurchasedServer, scriptTemplateName } from "./helpers";
 
 /**
  * Function that stop all script
- * @param {NS} ns provide main native hack function
+ * @param {NS} ns provide main nat
+ive hack function
  * @param {string} server provide server target that currently running the script
  * @param {string} scriptName provide script name that we want to kill
  * @param {boolean=} stopAllScript is we want to kill all script, or maybe just kill script that have same name
@@ -30,6 +31,9 @@ export function stopScript(ns, server, scriptName, stopAllScript = false) {
  * @return void
  */
 export async function main(ns) {
+  // Disable default ns log
+  ns.disableLog("sleep");
+
 	/**
    * In this script, i want to make automatic kill running script
    * With logic:

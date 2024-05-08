@@ -3,9 +3,9 @@ import { getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpe
 /**
  * Execute script name from targeted server, slice thread into all rooted domains
  * @param {NS} ns provide main native hack function
- * @param {String} server provided targeted server that will handle running script
- * @param {String} scriptName provided script template name
- * @param {Array} rootedDomains list domains that already have root access
+ * @param {string} server provided targeted server that will handle running script
+ * @param {string} scriptName provided script template name
+ * @param {array} rootedDomains list domains that already have root access
  * @return void
  */
 export function execScript(ns, server, scriptName, rootedDomains) {
@@ -46,6 +46,7 @@ export function execScript(ns, server, scriptName, rootedDomains) {
  * @return void
  */
 export async function main(ns) {
+  ns.disableLog("sleep");
   ns.disableLog("getPurchasedServers");
 
 	/**

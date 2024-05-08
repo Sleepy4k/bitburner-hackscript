@@ -1,6 +1,9 @@
 import { execScript } from "./execute_script";
 import { serverDomainPrefix, getPurchasedServer, getNukedDomains, scriptTemplateName } from "./helpers";
 
+/**
+ * Init local config for server handler
+ */
 const LOOP_SLEEP = 5;
 const MINIMUM_SERVER_RAM = 8;
 const UPGRADE_EACH_X_SERVER = 5;
@@ -55,8 +58,7 @@ function purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains
  * @return {Boolean} flag indicating whether upgrade is needed
  */
 function upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains) {
-  let isServerAlreadyMax = true;
-  let updatePurchaseList = false;
+  let isServerAlreadyMax = true, updatePurchaseList = false;
 
   for (const server of purchasedServer) {
     if (ns.getServerMaxRam(server) >= currentMaxRAMUpgrade) continue;
@@ -88,13 +90,15 @@ function upgradeServer(ns, currentMaxRAMUpgrade, purchasedServer, rootedDomains)
  * @return {Number} the next maximum server RAM upgrade
  */
 function upgradeCurrentMaxServerRAM(ns, currentMaxRAMUpgrade, maxPurchaseableRAM) {
-  if (currentMaxRAMUpgrade * 2 > maxPurchaseableRAM) {
+  const upgradedRAMServer = currentMaxRAMUpgrade * 2;
+
+  if (upgradedRAMServer > maxPurchaseableRAM) {
     ns.print(`All server reach max server ram upgrade that can be purchased, preparing to shutdown current script after ${LOOP_SLEEP * 1000} seconds`);
     return maxPurchaseableRAM;
   }
 
-  ns.print(`All server already upgraded to current max ram upgrade ${currentMaxRAMUpgrade}GB, doubling current server max ram upgrade to ${currentMaxRAMUpgrade * 2}GB`);
-  return currentMaxRAMUpgrade * 2;
+  ns.print(`All server already upgraded to current max ram upgrade ${currentMaxRAMUpgrade}GB, doubling current server max ram upgrade to ${upgradedRAMServer}GB`);
+  return upgradedRAMServer;
 }
 
 /**
@@ -151,6 +155,7 @@ export async function main(ns) {
 
     while (totalPurchasedServer < totalPurchaseableServer && !upgradeFlag) {
       const purchasedServerResult = purchaseServer(ns, totalPurchasedServer, purchasedServer, rootedDomains);
+
       if (purchasedServerResult[0] != null) purchasedServer.push(purchasedServerResult[0]);
       if (purchasedServerResult[1]) updateScriptState();
 
